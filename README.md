@@ -262,7 +262,7 @@ mcp-server-tronweb/
 |---|---|---|
 | `mainnet` | https://api.trongrid.io | TRON Mainnet |
 | `shasta` | https://api.shasta.trongrid.io | Shasta Testnet |
-| `nile` | https://api.nileex.io | Nile Testnet |
+| `nile` | https://nile.trongrid.io | Nile Testnet |
 
 All tools accept an optional `network` parameter to override the default.
 

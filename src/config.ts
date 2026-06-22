@@ -3,7 +3,7 @@ import 'dotenv/config';
 export const NETWORKS: Record<string, string> = {
   mainnet: 'https://api.trongrid.io',
   shasta: 'https://api.shasta.trongrid.io',
-  nile: 'https://api.nileex.io',
+  nile: 'https://nile.trongrid.io',
 };
 
 const rawNetwork = process.env.TRON_NETWORK ?? 'mainnet';
