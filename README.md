@@ -98,11 +98,12 @@ npm run inspect       # against the built server — run `npm run build` first
 npm run inspect:dev   # against TypeScript source — no build needed
 ```
 
-The first run downloads the Inspector via `npx`, then launches a local web app (it prints a URL like `http://localhost:6274` with a session token) and opens it in your browser. Then:
+The first run downloads the Inspector via `npx`, then launches a local web app (it prints a URL like `http://localhost:6274` with a session token) and opens it in your browser. The Inspector does **not** auto-connect — you connect it to the server first:
 
-1. The server is already connected over stdio — open the **Tools** tab and click **List Tools** (you should see all 43).
-2. Pick a tool (e.g. `get_current_block` or `build_trx_transfer`), fill in its fields, and click **Run Tool**.
-3. The response — or a node error — shows in the result pane.
+1. In the left **connection pane**, the transport (**STDIO**), **Command** (`tsx`) and **Arguments** (`src/index.ts`) are pre-filled — click **Connect**. The status should turn to **Connected**.
+   - **"Connection Error — Did you add the proxy session token in Configuration?"** means the page is missing the auth token. Open the tokenized URL the terminal printed (`http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=...`), or paste the token into **Configuration → Proxy Session Token**. The token changes on every restart. For local-only use you can skip it entirely: `DANGEROUSLY_OMIT_AUTH=true npm run inspect:dev`.
+2. Open the **Tools** tab, then click **List Tools** — you should see all 43.
+3. Pick a tool (e.g. `get_current_block` or `build_trx_transfer`), fill in its fields, and click **Run Tool**. The response — or a node error — shows in the result pane.
 
 The network comes from your `.env` (`TRON_NETWORK`). Override it for a single run:
 
