@@ -83,6 +83,26 @@ async function buildVerifyFixture() {
   return { message: VERIFY_MESSAGE, signature, signer: A };
 }
 
+// Minimal EIP-712 / TIP-712 typed data signed locally to feed verify_typed_data.
+const TYPED_DATA = {
+  domain: { name: 'mcp-server-tronweb', version: '1' },
+  types: { Smoke: [{ name: 'content', type: 'string' }] },
+  value: { content: 'typed-data smoke test' },
+};
+
+function buildTypedFixture() {
+  const tw = new TronWeb({ fullHost: NETWORKS[NETWORK] });
+  tw.setPrivateKey(PK_A);
+  // _signTypedData returns a hex signature synchronously (local crypto, no network).
+  const signature: string = (tw.trx as any)._signTypedData(
+    TYPED_DATA.domain,
+    TYPED_DATA.types,
+    TYPED_DATA.value,
+    PK_A,
+  );
+  return { ...TYPED_DATA, signature, signer: A };
+}
+
 // Minimal hex bytecode + empty ABI for the deploy build (node packages it without executing).
 const MIN_BYTECODE = '6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2';
 
@@ -92,6 +112,13 @@ type Ctx = {
   txid?: string;
   unsignedTx?: unknown;
   verify?: { message: string; signature: string; signer: string };
+  typed?: {
+    domain: Record<string, unknown>;
+    types: Record<string, unknown>;
+    value: Record<string, unknown>;
+    signature: string;
+    signer: string;
+  };
 };
 
 const SKIP = Symbol('skip');
@@ -408,6 +435,22 @@ const CASES: Case[] = [
     },
   },
   {
+    name: 'verify_typed_data',
+    kind: 'read',
+    args: (ctx) =>
+      ctx.typed
+        ? {
+            domain: ctx.typed.domain,
+            types: ctx.typed.types,
+            value: ctx.typed.value,
+            signature: ctx.typed.signature,
+            address: ctx.typed.signer,
+          }
+        : SKIP,
+    check: (p: any) =>
+      p?.valid === true ? null : `verify_typed_data returned valid=${p?.valid}`,
+  },
+  {
     name: 'broadcast_transaction',
     kind: 'broadcast',
     check: txShape,
@@ -445,6 +488,7 @@ async function main() {
     `broadcast=${INCLUDE_BROADCAST ? 'on' : 'off'} contract=${CONTRACT ?? '(none)'}\n`);
 
   CTX.verify = await buildVerifyFixture();
+  CTX.typed = buildTypedFixture();
 
   const transport = new StdioClientTransport({
     command: path.join(ROOT, 'node_modules', '.bin', 'tsx'),
