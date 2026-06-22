@@ -91,9 +91,26 @@ For development (no build step):
 
 ## MCP Inspector (Debug)
 
+The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a web UI for clicking through every tool by hand — pick a tool, fill in its parameters, hit **Run**, and read the response. Great for exploring without writing any code.
+
 ```bash
-npm run inspect
+npm run inspect       # against the built server — run `npm run build` first
+npm run inspect:dev   # against TypeScript source — no build needed
 ```
+
+The first run downloads the Inspector via `npx`, then launches a local web app (it prints a URL like `http://localhost:6274` with a session token) and opens it in your browser. Then:
+
+1. The server is already connected over stdio — open the **Tools** tab and click **List Tools** (you should see all 43).
+2. Pick a tool (e.g. `get_current_block` or `build_trx_transfer`), fill in its fields, and click **Run Tool**.
+3. The response — or a node error — shows in the result pane.
+
+The network comes from your `.env` (`TRON_NETWORK`). Override it for a single run:
+
+```bash
+TRON_NETWORK=nile npm run inspect:dev
+```
+
+> Read-only tools (`get_*`, `trigger_constant_contract`) return live data. `build_*` tools return an **unsigned** transaction — nothing is signed or broadcast — so this is safe to poke at on any network.
 
 ---
 
