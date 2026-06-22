@@ -20,9 +20,9 @@ Built with: **Node.js + TypeScript**, on the [MCP TypeScript SDK](https://github
 | **Governance** | `build_create_proposal`, `build_vote_proposal`, `build_delete_proposal` |
 | **Smart Contracts** | `trigger_constant_contract`, `estimate_energy`, `build_trigger_smart_contract`, `build_trc20_transfer`, `build_deploy_smart_contract`, `build_clear_contract_abi`, `build_update_contract_user_fee_percentage`, `build_update_contract_energy_limit` |
 | **Transaction Utilities** | `extend_transaction_expiration` |
-| **Broadcast & Verify** | `broadcast_transaction`, `verify_message` |
+| **Broadcast & Verify** | `broadcast_transaction`, `verify_message`, `verify_typed_data` |
 
-**Total: 43 tools**
+**Total: 44 tools**
 
 > **No signing here.** This server has **no signing capability** — it never holds or contacts a private key. It only **queries**, **builds unsigned transactions**, and **broadcasts** transactions that were signed out-of-band. Signing happens wherever you manage your keys (any wallet, hardware device, or signing service) — entirely outside and independent of this server.
 
@@ -102,7 +102,7 @@ The first run downloads the Inspector via `npx`, then launches a local web app (
 
 1. In the left **connection pane**, the transport (**STDIO**), **Command** (`tsx`) and **Arguments** (`src/index.ts`) are pre-filled — click **Connect**. The status should turn to **Connected**.
    - **"Connection Error — Did you add the proxy session token in Configuration?"** means the page is missing the auth token. Open the tokenized URL the terminal printed (`http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=...`), or paste the token into **Configuration → Proxy Session Token**. The token changes on every restart. For local-only use you can skip it entirely: `DANGEROUSLY_OMIT_AUTH=true npm run inspect:dev`.
-2. Open the **Tools** tab, then click **List Tools** — you should see all 43.
+2. Open the **Tools** tab, then click **List Tools** — you should see all 44.
 3. Pick a tool (e.g. `get_current_block` or `build_trx_transfer`), fill in its fields, and click **Run Tool**. The response — or a node error — shows in the result pane.
 
 The network comes from your `.env` (`TRON_NETWORK`). Override it for a single run:
@@ -126,9 +126,9 @@ npm test            # vitest, single run
 npm run test:watch  # watch mode
 ```
 
-### Smoke test — exercise all 43 tools end-to-end
+### Smoke test — exercise all 44 tools end-to-end
 
-Drives the **real server over stdio** as an MCP client: it launches the server, asserts all 43 tools are registered, then calls each tool with a minimal fixture and prints a per-tool result.
+Drives the **real server over stdio** as an MCP client: it launches the server, asserts all 44 tools are registered, then calls each tool with a minimal fixture and prints a per-tool result.
 
 ```bash
 npm run smoke                     # uses TRON_NETWORK from .env
@@ -227,7 +227,7 @@ Human: Stake 100 TRX for ENERGY on shasta testnet from TXxx.
 ## Security Notes
 
 - **This server has no signing capability.** It never holds, reads, or contacts a private key, and it has no connection to any signer service.
-- Its surface is limited to: **queries** (`get_*`, `trigger_constant_contract`, `estimate_energy`), **building unsigned transactions** (`build_*`), and **broadcasting** transactions that were signed elsewhere (`broadcast_transaction`). `verify_message` is read-only signature verification.
+- Its surface is limited to: **queries** (`get_*`, `trigger_constant_contract`, `estimate_energy`), **building unsigned transactions** (`build_*`), and **broadcasting** transactions that were signed elsewhere (`broadcast_transaction`). `verify_message` and `verify_typed_data` are read-only signature verification.
 - Signing happens **out-of-band**, wherever you manage your keys (any wallet, hardware device, or signing service) — that component is the only thing that ever holds the private key, and it is fully independent of this server.
 - Always verify transaction details before signing them out-of-band — the AI builds transactions, but a human/the signer decides whether to sign and submit.
 
@@ -247,7 +247,7 @@ mcp-server-tronweb/
 │       ├── contract.ts             # Smart contract tools (build / read-only)
 │       └── broadcast.ts            # Broadcast signed txns + verify_message (no signing)
 ├── scripts/
-│   └── smoke-test.ts               # End-to-end smoke test — all 43 tools over stdio
+│   └── smoke-test.ts               # End-to-end smoke test — all 44 tools over stdio
 ├── dist/                           # Compiled JS (after npm run build)
 ├── .env.example
 ├── package.json
