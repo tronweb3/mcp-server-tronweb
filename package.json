@@ -38,6 +38,7 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "inspect:dev": "npx @modelcontextprotocol/inspector tsx src/index.ts",
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:mainnet": "tsx scripts/smoke-test.ts --network mainnet --mode read",
     "test": "vitest run",
