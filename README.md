@@ -97,6 +97,48 @@ npm run inspect
 
 ---
 
+## Testing
+
+Two layers, both runnable **without a private key** (this server never signs):
+
+### Unit tests
+
+```bash
+npm test            # vitest, single run
+npm run test:watch  # watch mode
+```
+
+### Smoke test — exercise all 43 tools end-to-end
+
+Drives the **real server over stdio** as an MCP client: it launches the server, asserts all 43 tools are registered, then calls each tool with a minimal fixture and prints a per-tool result.
+
+```bash
+npm run smoke                     # uses TRON_NETWORK from .env
+npm run smoke -- --network nile   # pick a network explicitly
+npm run smoke:mainnet             # mainnet, read-only tools only (safe; uses public USDT)
+```
+
+Options:
+
+| Flag / env | Default | Description |
+|---|---|---|
+| `--network nile\|shasta\|mainnet` | `$TRON_NETWORK` → `nile` | Network to test against |
+| `--mode read\|build\|all` | `all` | Which tool groups to run |
+| `--contract <base58>` / `TEST_TRC20` | mainnet: USDT, else *(none)* | TRC20 used by the contract tools |
+| `--include-broadcast` | off | Also exercise `broadcast_transaction` |
+| `TRON_API_KEY` | *(empty)* | Reduces HTTP 429 rate-limit noise on public endpoints |
+
+Each tool is classified:
+
+- ✅ **PASS** — well-formed result (reads return data; `build_*` return an unsigned transaction).
+- ⚠️ **NODE-ERROR** — the node rejected it (e.g. the throwaway test account has no on-chain state, or the public node lacks a feature). The tool is wired correctly; **not counted as a failure**.
+- ⏭️ **SKIP** — intentionally skipped (`broadcast_transaction` by default; the contract tools when no TRC20 is supplied).
+- ❌ **PROTOCOL-FAIL** — bad schema / server crash / tool-list mismatch. **Fails the run (exit code 1)** — usable as a CI gate.
+
+> The smoke test signs only locally inside the **test client** (a throwaway key, used solely to derive valid addresses and feed `verify_message`); nothing is ever sent to the server to sign, and `build_*` tools return unsigned transactions — so it is safe to run on a testnet.
+
+---
+
 ## Usage Patterns
 
 ### Query (no signing required)
