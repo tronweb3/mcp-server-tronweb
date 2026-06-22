@@ -228,6 +228,8 @@ mcp-server-tronweb/
 │       ├── transaction-builder.ts  # Build unsigned transactions
 │       ├── contract.ts             # Smart contract tools (build / read-only)
 │       └── broadcast.ts            # Broadcast signed txns + verify_message (no signing)
+├── scripts/
+│   └── smoke-test.ts               # End-to-end smoke test — all 43 tools over stdio
 ├── dist/                           # Compiled JS (after npm run build)
 ├── .env.example
 ├── package.json
