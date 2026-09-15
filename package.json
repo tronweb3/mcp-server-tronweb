@@ -48,7 +48,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "dotenv": "^16.4.7",
-    "tronweb": "^6.3.0",
+    "tronweb": "^6.5.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
