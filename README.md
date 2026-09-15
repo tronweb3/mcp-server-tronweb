@@ -10,19 +10,36 @@ Built with: **Node.js + TypeScript**, on the [MCP TypeScript SDK](https://github
 
 | Category | Tools |
 |---|---|
-| **Account & Balance** | `get_account`, `get_balance`, `get_account_resources` |
-| **Chain Query** | `get_current_block`, `get_block`, `get_transaction`, `get_transaction_info`, `get_chain_parameters`, `get_node_info`, `get_bandwidth_prices`, `get_energy_prices` |
+| **Account & Balance** | `get_account`, `get_balance`, `get_account_resources`, `get_unconfirmed_account`, `get_unconfirmed_balance`, `get_account_by_id` |
+| **Chain Query** | `get_current_block`, `get_confirmed_current_block`, `get_block`, `get_block_by_number`, `get_block_by_hash`, `get_block_range`, `get_block_transaction_count`, `get_transactions_from_block`, `get_transaction_from_block`, `get_transaction`, `get_transaction_info`, `get_confirmed_transaction`, `get_unconfirmed_transaction_info`, `get_current_ref_block_params`, `get_approved_list`, `get_sign_weight`, `get_chain_parameters`, `get_node_info`, `get_bandwidth_prices`, `get_energy_prices` |
+| **Resources & Staking Query** | `get_bandwidth`, `get_delegated_resource_v2`, `get_delegated_resource_account_index_v2`, `get_available_unfreeze_count`, `get_can_delegated_max_size`, `get_can_withdraw_unfreeze_amount`, `get_reward`, `get_brokerage` |
+| **TRC10 Query** | `get_token_by_id`, `get_token_from_id`, `get_token_list_by_name`, `list_tokens`, `get_tokens_issued_by_address` |
+| **Witness & Node** | `list_nodes`, `list_super_representatives`, `get_now_witness_list`, `time_until_next_vote_cycle` |
+| **Governance & Exchange Query** | `get_proposal`, `list_proposals`, `get_exchange_by_id`, `list_exchanges`, `list_exchanges_paginated` |
 | **TRX / TRC10 Transfer** | `build_trx_transfer`, `build_trc10_transfer`, `build_purchase_trc10_token` |
 | **Staking (Stake 2.0)** | `build_freeze_balance_v2`, `build_unfreeze_balance_v2`, `build_withdraw_expire_unfreeze`, `build_delegate_resource`, `build_undelegate_resource` |
 | **Voting & SR** | `build_vote_witness`, `build_withdraw_block_rewards`, `build_apply_for_sr`, `build_update_brokerage` |
 | **Account Management** | `build_create_account`, `build_update_account_name`, `build_set_account_id`, `build_update_account_permissions` |
 | **TRC10 Token** | `build_create_trc10_token`, `build_update_trc10_token` |
 | **Governance** | `build_create_proposal`, `build_vote_proposal`, `build_delete_proposal` |
-| **Smart Contracts** | `trigger_constant_contract`, `estimate_energy`, `build_trigger_smart_contract`, `build_trc20_transfer`, `build_deploy_smart_contract`, `build_clear_contract_abi`, `build_update_contract_user_fee_percentage`, `build_update_contract_energy_limit` |
+| **Smart Contracts** | `get_contract`, `get_contract_info`, `trigger_constant_contract`, `estimate_energy`, `build_trigger_smart_contract`, `build_trc20_transfer`, `build_deploy_smart_contract`, `build_clear_contract_abi`, `build_update_contract_user_fee_percentage`, `build_update_contract_energy_limit` |
 | **Transaction Utilities** | `extend_transaction_expiration` |
 | **Broadcast & Verify** | `broadcast_transaction`, `verify_message`, `verify_typed_data` |
 
-**Total: 44 tools**
+**Total: 83 tools**
+
+### Precise int64 reads (`precise`)
+
+TRON stores balances, frozen amounts and timestamps as **int64**, and those values can exceed JavaScript's safe-integer range (2^53 - 1), where a plain JSON number silently loses precision. Every read tool whose endpoint supports it therefore takes an optional `precise` flag: passing `precise: true` routes the call through `tronWeb.trx.raw`, which issues the request as a **GET with `int64_as_string=true`** ([java-tron #6699](https://github.com/tronprotocol/java-tron/pull/6699)), so those fields come back as exact decimal **strings** instead of numbers. It needs a node new enough to honor the flag — older nodes silently ignore it and return numbers — and values read this way are for display and arithmetic only: **never feed them back into transaction-consuming endpoints**.
+
+```
+get_balance(address="TRxxx...xxxxxxx", precise=true)
+→ { "address": "TRxxx...xxxxxxx",
+    "balance_sun": "9007199254740993",     ← decimal string, not a JS number
+    "balance_trx": "9007199254.740993" }
+```
+
+> The deprecated `walletextension` reads (`getTransactionsToAddress` / `getTransactionsFromAddress` / `getTransactionsRelated`) are intentionally **not** exposed — java-tron >= 4.1.1 rejects them.
 
 > **No signing here.** This server has **no signing capability** — it never holds or contacts a private key. It only **queries**, **builds unsigned transactions**, and **broadcasts** transactions that were signed out-of-band. Signing happens wherever you manage your keys (any wallet, hardware device, or signing service) — entirely outside and independent of this server.
 
@@ -102,7 +119,7 @@ The first run downloads the Inspector via `npx`, then launches a local web app (
 
 1. In the left **connection pane**, the transport (**STDIO**), **Command** (`tsx`) and **Arguments** (`src/index.ts`) are pre-filled — click **Connect**. The status should turn to **Connected**.
    - **"Connection Error — Did you add the proxy session token in Configuration?"** means the page is missing the auth token. Open the tokenized URL the terminal printed (`http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=...`), or paste the token into **Configuration → Proxy Session Token**. The token changes on every restart. For local-only use you can skip it entirely: `DANGEROUSLY_OMIT_AUTH=true npm run inspect:dev`.
-2. Open the **Tools** tab, then click **List Tools** — you should see all 44.
+2. Open the **Tools** tab, then click **List Tools** — you should see all 83.
 3. Pick a tool (e.g. `get_current_block` or `build_trx_transfer`), fill in its fields, and click **Run Tool**. The response — or a node error — shows in the result pane.
 
 The network comes from your `.env` (`TRON_NETWORK`). Override it for a single run:
@@ -126,9 +143,9 @@ npm test            # vitest, single run
 npm run test:watch  # watch mode
 ```
 
-### Smoke test — exercise all 44 tools end-to-end
+### Smoke test — exercise all 83 tools end-to-end
 
-Drives the **real server over stdio** as an MCP client: it launches the server, asserts all 44 tools are registered, then calls each tool with a minimal fixture and prints a per-tool result.
+Drives the **real server over stdio** as an MCP client: it launches the server, asserts all 83 tools are registered, then calls each tool with a minimal fixture and prints a per-tool result.
 
 ```bash
 npm run smoke                     # uses TRON_NETWORK from .env
@@ -164,6 +181,10 @@ Each tool is classified:
 ```
 Human: What is the TRX balance of TRxxx...xxxxxxx?
 → LLM calls get_balance(address="TRxxx...xxxxxxx", network="mainnet")
+
+Human: How much ENERGY has TRxxx...xxxxxxx delegated to TYyy...yyyyyyy?
+→ LLM calls get_delegated_resource_v2(from_address="TRxxx...xxxxxxx",
+                                      to_address="TYyy...yyyyyyy", precise=true)
 ```
 
 ### Build → Sign (out-of-band) → Broadcast
@@ -238,17 +259,22 @@ Human: Stake 100 TRX for ENERGY on shasta testnet from TXxx.
 ```
 mcp-server-tronweb/
 ├── src/
-│   ├── index.ts                    # MCP server entry (stdio transport)
-│   ├── config.ts                   # Environment config (network, API key)
-│   ├── tronweb-factory.ts          # Read-only TronWeb instance factory & helpers
+│   ├── index.ts                       # MCP server entry (stdio transport)
+│   ├── config.ts                      # Environment config (network, API key)
+│   ├── tronweb-factory.ts             # Read-only TronWeb instance factory & helpers
 │   └── tools/
-│       ├── account-query.ts        # Account & chain query tools
-│       ├── transaction-builder.ts  # Build unsigned transactions
-│       ├── contract.ts             # Smart contract tools (build / read-only)
-│       └── broadcast.ts            # Broadcast signed txns + verify_message (no signing)
+│       ├── _shared.ts                 # Shared Zod schemas (network, precise) & read-facade picker
+│       ├── account-query.ts           # Account & chain query tools
+│       ├── block-query.ts             # Block & transaction read APIs
+│       ├── account-resource-query.ts  # Bandwidth, delegation, unfreeze & reward reads
+│       ├── token-query.ts             # TRC10 asset-issue read APIs
+│       ├── network-query.ts           # Nodes, witnesses, contract metadata, proposals & exchanges
+│       ├── transaction-builder.ts     # Build unsigned transactions
+│       ├── contract.ts                # Smart contract tools (build / read-only)
+│       └── broadcast.ts               # Broadcast signed txns + verify_message (no signing)
 ├── scripts/
-│   └── smoke-test.ts               # End-to-end smoke test — all 44 tools over stdio
-├── dist/                           # Compiled JS (after npm run build)
+│   └── smoke-test.ts                  # End-to-end smoke test — all 83 tools over stdio
+├── dist/                              # Compiled JS (after npm run build)
 ├── .env.example
 ├── package.json
 └── tsconfig.json

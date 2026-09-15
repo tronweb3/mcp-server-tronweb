@@ -109,6 +109,7 @@ const MIN_BYTECODE = '6080604052348015600f57600080fd5b50603f80601d6000396000f3fe
 // ── Shared context populated by earlier cases ───────────────────────────────
 type Ctx = {
   blockNum?: number;
+  blockHash?: string;
   txid?: string;
   unsignedTx?: unknown;
   verify?: { message: string; signature: string; signer: string };
@@ -174,6 +175,144 @@ const CASES: Case[] = [
   { name: 'get_node_info', kind: 'read', args: () => ({}) },
   { name: 'get_bandwidth_prices', kind: 'read', args: () => ({}) },
   { name: 'get_energy_prices', kind: 'read', args: () => ({}) },
+
+  // ── block-query.ts (read) ─────────────────────────────────────────────────
+  {
+    name: 'get_confirmed_current_block',
+    kind: 'read',
+    args: () => ({}),
+    // Bootstraps ctx.blockHash for get_block_by_hash below: the solidity node's
+    // tip lags ~20 blocks, so its blockID is safely resolvable on the full node.
+    after: (ctx, p: any) => {
+      const hash = p?.blockID;
+      if (hash) ctx.blockHash = hash;
+    },
+  },
+  {
+    name: 'get_block_by_number',
+    kind: 'read',
+    // precise: int64 block fields (timestamp, number) come back as decimal
+    // strings — exercises the tronWeb.trx.raw path added by _shared.ts.
+    args: (ctx) => ({ block_number: Math.max(1, (ctx.blockNum ?? 100) - 20), precise: true }),
+  },
+  {
+    name: 'get_block_by_hash',
+    kind: 'read',
+    args: (ctx) => (ctx.blockHash ? { block_hash: ctx.blockHash } : SKIP),
+  },
+  {
+    name: 'get_block_range',
+    kind: 'read',
+    // getBlockRange rejects spans wider than 100 blocks; keep it to 5 inclusive.
+    args: (ctx) => {
+      const start = Math.max(1, (ctx.blockNum ?? 100) - 5);
+      return { start_block: start, end_block: start + 4 };
+    },
+  },
+  { name: 'get_block_transaction_count', kind: 'read', args: () => ({}) },
+  {
+    name: 'get_transactions_from_block',
+    kind: 'read',
+    args: (ctx) => ({ block_id: Math.max(1, (ctx.blockNum ?? 100) - 20) }),
+  },
+  {
+    name: 'get_transaction_from_block',
+    kind: 'read',
+    args: (ctx) => ({ block_id: Math.max(1, (ctx.blockNum ?? 100) - 20), index: 0 }),
+  },
+  {
+    name: 'get_confirmed_transaction',
+    kind: 'read',
+    args: (ctx) => (ctx.txid ? { txid: ctx.txid } : SKIP),
+  },
+  {
+    name: 'get_unconfirmed_transaction_info',
+    kind: 'read',
+    args: (ctx) => (ctx.txid ? { txid: ctx.txid } : SKIP),
+  },
+  // No `precise` parameter: pinned to the number facade for local TAPOS arithmetic.
+  { name: 'get_current_ref_block_params', kind: 'read', args: () => ({}) },
+  // NOTE: get_approved_list / get_sign_weight also live in block-query.ts but need
+  // ctx.unsignedTx, so they sit at the end of the transaction-builder section below.
+
+  // ── account-resource-query.ts (read) ──────────────────────────────────────
+  // A and B are dummy-key addresses with no on-chain state, so NODE-ERROR here
+  // is an expected, non-failing outcome.
+  { name: 'get_unconfirmed_account', kind: 'read', args: () => ({ address: A }) },
+  {
+    name: 'get_unconfirmed_balance',
+    kind: 'read',
+    // precise: balances are int64 SUN — the string path must survive > 2^53-1.
+    args: () => ({ address: A, precise: true }),
+  },
+  { name: 'get_account_by_id', kind: 'read', args: () => ({ account_id: '6161616161616161' }) },
+  { name: 'get_bandwidth', kind: 'read', args: () => ({ address: A }) },
+  {
+    name: 'get_delegated_resource_v2',
+    kind: 'read',
+    args: () => ({ from_address: A, to_address: B }),
+  },
+  {
+    name: 'get_delegated_resource_account_index_v2',
+    kind: 'read',
+    args: () => ({ address: A }),
+  },
+  { name: 'get_available_unfreeze_count', kind: 'read', args: () => ({ address: A }) },
+  {
+    name: 'get_can_delegated_max_size',
+    kind: 'read',
+    args: () => ({ address: A, resource: 'ENERGY' }),
+  },
+  {
+    name: 'get_can_withdraw_unfreeze_amount',
+    kind: 'read',
+    // precise: the withdrawable amount is int64 SUN.
+    args: () => ({ address: A, timestamp: Date.now(), precise: true }),
+  },
+  { name: 'get_reward', kind: 'read', args: () => ({ address: A }) },
+  { name: 'get_brokerage', kind: 'read', args: () => ({ address: A }) },
+
+  // ── token-query.ts (read) ─────────────────────────────────────────────────
+  {
+    name: 'get_token_by_id',
+    kind: 'read',
+    // precise: TRC10 totalSupply / sale parameters are int64.
+    args: () => ({ token_id: '1000001', precise: true }),
+  },
+  { name: 'get_token_from_id', kind: 'read', args: () => ({ token_name: 'BitTorrent' }) },
+  { name: 'get_token_list_by_name', kind: 'read', args: () => ({ token_name: 'BitTorrent' }) },
+  // Always pass a limit: without one the node dumps every TRC10 token on the chain.
+  { name: 'list_tokens', kind: 'read', args: () => ({ limit: 2, offset: 0 }) },
+  { name: 'get_tokens_issued_by_address', kind: 'read', args: () => ({ address: A }) },
+
+  // ── network-query.ts (read) ───────────────────────────────────────────────
+  { name: 'list_nodes', kind: 'read', args: () => ({}) },
+  {
+    name: 'list_super_representatives',
+    kind: 'read',
+    // precise: SR voteCount is int64 and routinely exceeds 2^53-1 on mainnet.
+    args: () => ({ precise: true }),
+  },
+  // Needs a recent java-tron build; older public nodes answer 404 (→ NODE-ERROR).
+  { name: 'get_now_witness_list', kind: 'read', args: () => ({ limit: 5, offset: 0 }) },
+  { name: 'time_until_next_vote_cycle', kind: 'read', args: () => ({}) },
+  {
+    name: 'get_contract',
+    kind: 'read',
+    needsContract: true,
+    args: () => ({ contract_address: CONTRACT }),
+  },
+  {
+    name: 'get_contract_info',
+    kind: 'read',
+    needsContract: true,
+    args: () => ({ contract_address: CONTRACT }),
+  },
+  { name: 'get_proposal', kind: 'read', args: () => ({ proposal_id: 1 }) },
+  { name: 'list_proposals', kind: 'read', args: () => ({}) },
+  { name: 'get_exchange_by_id', kind: 'read', args: () => ({ exchange_id: 1 }) },
+  { name: 'list_exchanges', kind: 'read', args: () => ({}) },
+  { name: 'list_exchanges_paginated', kind: 'read', args: () => ({ limit: 5, offset: 0 }) },
 
   // ── contract.ts (read) ────────────────────────────────────────────────────
   {
@@ -415,6 +554,21 @@ const CASES: Case[] = [
     kind: 'build',
     check: txShape,
     args: () => ({ proposal_id: 1, issuer_address: A }),
+  },
+
+  // ── block-query.ts (read, multi-sig) ──────────────────────────────────────
+  // These two POST a transaction object, so they need ctx.unsignedTx from
+  // build_trx_transfer above — which only runs in build/all mode. They stay
+  // kind: 'read' and SKIP whenever that fixture is absent (e.g. --mode read).
+  {
+    name: 'get_approved_list',
+    kind: 'read',
+    args: (ctx) => (ctx.unsignedTx ? { transaction: ctx.unsignedTx } : SKIP),
+  },
+  {
+    name: 'get_sign_weight',
+    kind: 'read',
+    args: (ctx) => (ctx.unsignedTx ? { transaction: ctx.unsignedTx, permission_id: 0 } : SKIP),
   },
 
   // ── broadcast.ts ──────────────────────────────────────────────────────────
